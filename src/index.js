@@ -1,7 +1,4 @@
 const debug = require('debug')('metalsmith:migrate-safetag');
-const hercule = require('hercule');
-const async = require('async');
-const path = require('path');
 const minimatch = require('minimatch');
 const _ = require('lodash');
 const trimNewlines = require('trim-newlines');
@@ -46,10 +43,10 @@ function plugin(options) {
           'recommendations'
         ];
 
-        const includes_regexp = /^!INCLUDE\s\"(.*)\.md\"/gm;
+        const includes_regexp = /^!INCLUDE\s"(.*)\.md"/gm;
 
-        let match,
-          matches = [];
+        let match;
+        const matches = [];
 
         while ((match = includes_regexp.exec(index))) matches.push(match[1]);
 

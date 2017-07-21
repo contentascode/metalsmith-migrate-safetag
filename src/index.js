@@ -20,7 +20,8 @@ module.exports = plugin;
  */
 
 function plugin(options) {
-  const { activities = false, methods = false, references = false, images = false } = options || {};
+  const { activities = false, methods = false, references = false, images = false, document_matter = false } =
+    options || {};
   return function(files, metalsmith, done) {
     // First pass reducer to group exercises files in one activity and prepare for transform pass.
     const walk = (acc, file, key) => {
@@ -105,7 +106,7 @@ function plugin(options) {
           .replace(/^!INCLUDE "(.*)"\W?$/gm, ':[]($1)')
           .replace(/\/exercises\//g, '/activities/');
 
-        // Acivities are listed in index.guide.md
+        // Activities are listed in index.guide.md
         // For now, instead of scraping it, reuse taxonomy in toolkit pipeline to display activity browser.
 
         // TODO:Sanity checks
@@ -124,6 +125,28 @@ function plugin(options) {
             id: key,
             title,
             layout: 'method.md'
+          }
+        };
+      } else if (document_matter && minimatch(key, 'document_matter/**/*.md')) {
+        // Replace transclusion links
+        const contents = file.contents.toString().replace(/^!INCLUDE "(.*)"\W?$/gm, ':[]($1)');
+
+        // TODO:Sanity checks
+
+        // Match title
+
+        const title =
+          contents && contents.match(/^####\s(.*)$/m) ? { title: contents.match(/^####\s(.*)$/m)[1] } : null;
+
+        // Assemble single activity file with metadata fields for second pass.
+        return {
+          ...acc,
+          [key]: {
+            ...file,
+            contents: new Buffer(contents),
+            id: key,
+            title,
+            layout: 'page.md'
           }
         };
       } else if (references && minimatch(key, 'references/*.md')) {

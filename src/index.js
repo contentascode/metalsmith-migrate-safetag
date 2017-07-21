@@ -20,17 +20,17 @@ module.exports = plugin;
  */
 
 function plugin(options) {
-  const { activities = false, methods = false, references = false } = options || {};
+  const { activities = false, methods = false, references = false, images = false } = options || {};
   return function(files, metalsmith, done) {
     // First pass reducer to group exercises files in one activity and prepare for transform pass.
     const walk = (acc, file, key) => {
       // Process activities.
-      if (activities && minimatch(key, '*/exercises/*/**.md')) {
+      if (activities && minimatch(key, 'exercises/*/**.md')) {
         // Default to empty contents.
         const contents = { contents: new Buffer('') };
 
         // Get index content
-        const index = minimatch(key, '*/exercises/*/index.md') ? file.contents.toString() : null;
+        const index = minimatch(key, 'exercises/*/index.md') ? file.contents.toString() : null;
 
         // Sanity checks
         const fields = [
@@ -59,23 +59,23 @@ function plugin(options) {
 
         // Add included files as metadata on activity object.
 
-        const summary = minimatch(key, '*/exercises/*/summary.md')
+        const summary = minimatch(key, 'exercises/*/summary.md')
           ? { summary: trimNewlines(file.contents.toString()) }
           : null;
 
-        const approach = minimatch(key, '*/exercises/*/approach.md')
+        const approach = minimatch(key, 'exercises/*/approach.md')
           ? { approach: trimNewlines(file.contents.toString()) }
           : null;
-        const materials = minimatch(key, '*/exercises/*/materials_needed.md')
+        const materials = minimatch(key, 'exercises/*/materials_needed.md')
           ? { materials: trimNewlines(file.contents.toString()) }
           : null;
-        const opsec = minimatch(key, '*/exercises/*/operational_security.md')
+        const opsec = minimatch(key, 'exercises/*/operational_security.md')
           ? { opsec: trimNewlines(file.contents.toString()) }
           : null;
-        const instructions = minimatch(key, '*/exercises/*/instructions.md')
+        const instructions = minimatch(key, 'exercises/*/instructions.md')
           ? { instructions: trimNewlines(file.contents.toString()) }
           : null;
-        const recommendations = minimatch(key, '*/exercises/*/recommendations.md')
+        const recommendations = minimatch(key, 'exercises/*/recommendations.md')
           ? { recommendations: trimNewlines(file.contents.toString()) }
           : null;
 
@@ -98,15 +98,15 @@ function plugin(options) {
             ...recommendations
           }
         };
-      } else if (methods && (minimatch(key, 'en/methods/**.guide.md') || minimatch(key, '*/methods/*/*.md'))) {
-        // Replace transclusion links and exercies -> activities.
+      } else if (methods && (minimatch(key, 'methods/*.md') || minimatch(key, 'methods/*/*.md'))) {
+        // Replace transclusion links
         const contents = file.contents
           .toString()
           .replace(/^!INCLUDE "(.*)"\W?$/gm, ':[]($1)')
           .replace(/\/exercises\//g, '/activities/');
 
-        // Strip language from key
-        const method = key.split('/').slice(1).join('/');
+        // Acivities are listed in index.guide.md
+        // For now, instead of scraping it, reuse taxonomy in toolkit pipeline to display activity browser.
 
         // TODO:Sanity checks
 
@@ -118,20 +118,17 @@ function plugin(options) {
         // Assemble single activity file with metadata fields for second pass.
         return {
           ...acc,
-          [method]: {
+          [key]: {
             ...file,
             contents: new Buffer(contents),
-            id: method,
+            id: key,
             title,
             layout: 'method.md'
           }
         };
-      } else if (references && minimatch(key, 'en/references/*.md')) {
+      } else if (references && minimatch(key, 'references/*.md')) {
         // TODO: Check external links and download for offline use.
         const contents = file.contents.toString();
-
-        // Strip language from key
-        const reference = key.split('/').slice(1).join('/');
 
         // TODO:Sanity checks
 
@@ -143,13 +140,26 @@ function plugin(options) {
         // Assemble single activity file with metadata fields for second pass.
         return {
           ...acc,
-          [reference]: {
+          [key]: {
             ...file,
             contents: new Buffer(contents),
-            id: reference,
+            id: key,
             title,
             description: 'test',
             layout: 'reference.md'
+          }
+        };
+      } else if (images && minimatch(key, 'images/**/*.*')) {
+        // Move images to methods folder for now.
+        const move = 'methods/' + key;
+
+        // TODO:Sanity checks
+
+        // Assemble single activity file with metadata fields for second pass.
+        return {
+          ...acc,
+          [move]: {
+            ...file
           }
         };
       }
@@ -164,7 +174,7 @@ function plugin(options) {
           ...file,
           title: 'Check user browser vulnerabilities',
           description: 'Outdated Java browser plugins',
-          contents: files['en/exercises/check_user_browser_vulns/browser_java_plugin.md'].contents
+          contents: files['exercises/check_user_browser_vulns/browser_java_plugin.md'].contents
         };
       } else if (activities) {
         const description = file.summary
@@ -175,7 +185,7 @@ function plugin(options) {
               .split(' ')
               .slice(0, -1)
               .join(' ') + '...'
-          : file.title;
+          : file.title || '';
         debug('description', description);
         return { ...file, description };
       }

@@ -20,8 +20,7 @@ module.exports = plugin;
  */
 
 function plugin(options) {
-  const { activities = false } = options || {};
-
+  const { activities = false, methods = false, references = false } = options || {};
   return function(files, metalsmith, done) {
     // First pass reducer to group exercises files in one activity and prepare for transform pass.
     const walk = (acc, file, key) => {
@@ -97,6 +96,60 @@ function plugin(options) {
             ...opsec,
             ...instructions,
             ...recommendations
+          }
+        };
+      } else if (methods && (minimatch(key, 'en/methods/**.guide.md') || minimatch(key, '*/methods/*/*.md'))) {
+        // Replace transclusion links and exercies -> activities.
+        const contents = file.contents
+          .toString()
+          .replace(/^!INCLUDE "(.*)"\W?$/gm, ':[]($1)')
+          .replace(/\/exercises\//g, '/activities/');
+
+        // Strip language from key
+        const method = key.split('/').slice(1).join('/');
+
+        // TODO:Sanity checks
+
+        // Match title
+
+        const title =
+          contents && contents.match(/^####\s(.*)$/m) ? { title: contents.match(/^####\s(.*)$/m)[1] } : null;
+
+        // Assemble single activity file with metadata fields for second pass.
+        return {
+          ...acc,
+          [method]: {
+            ...file,
+            contents: new Buffer(contents),
+            id: method,
+            title,
+            layout: 'method.md'
+          }
+        };
+      } else if (references && minimatch(key, 'en/references/*.md')) {
+        // TODO: Check external links and download for offline use.
+        const contents = file.contents.toString();
+
+        // Strip language from key
+        const reference = key.split('/').slice(1).join('/');
+
+        // TODO:Sanity checks
+
+        // Match title
+
+        const title =
+          contents && contents.match(/^####\s(.*)$/m) ? { title: contents.match(/^####\s(.*)$/m)[1] } : null;
+
+        // Assemble single activity file with metadata fields for second pass.
+        return {
+          ...acc,
+          [reference]: {
+            ...file,
+            contents: new Buffer(contents),
+            id: reference,
+            title,
+            description: 'test',
+            layout: 'reference.md'
           }
         };
       }

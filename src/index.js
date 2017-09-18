@@ -22,8 +22,17 @@ module.exports = plugin;
  */
 
 function plugin(options) {
-  const { activities = false, methods = false, references = false, images = false, document_matter = false } =
+  const {
+    activities = false,
+    methods = false,
+    references = false,
+    images = false,
+    document_matter = false,
+    origin,
+    origin_path_prefix
+  } =
     options || {};
+
   return function(files, metalsmith, done) {
     // First pass reducer to group exercises files in one activity and prepare for transform pass.
     const walk = (acc, file, key) => {
@@ -100,15 +109,17 @@ function plugin(options) {
             ...materials,
             ...opsec,
             ...instructions,
-            ...recommendations
+            ...recommendations,
+            origin_path: origin_path_prefix + key
           }
         };
       } else if (methods && (minimatch(key, 'methods/*.md') || minimatch(key, 'methods/*/*.md'))) {
-        // Replace transclusion links
+        // Replace transclusion links and remove Activities heading
         const contents = file.contents
           .toString()
           .replace(/^!INCLUDE "(.*)"\W?$/gm, ':[]($1)')
-          .replace(/\/exercises\//g, '/activities/');
+          .replace(/\/exercises\//g, '/activities/')
+          .replace(/^### Activities.?$/gm, '');
 
         // Activities are listed in index.guide.md
         // For now, instead of scraping it, reuse taxonomy in toolkit pipeline to display activity browser.
@@ -144,8 +155,9 @@ function plugin(options) {
             ...file,
             contents: new Buffer(contents),
             id: key,
-            title,
-            layout: 'method.md'
+            ...title,
+            layout: 'method.md',
+            origin_path: origin_path_prefix + key
           }
         };
       } else if (document_matter && minimatch(key, 'document_matter/**/*.md')) {
@@ -166,8 +178,9 @@ function plugin(options) {
             ...file,
             contents: new Buffer(contents),
             id: key,
-            title,
-            layout: 'page.md'
+            ...title,
+            layout: 'page.md',
+            origin_path: origin_path_prefix + key
           }
         };
       } else if (references && minimatch(key, 'references/*.md')) {
@@ -188,9 +201,10 @@ function plugin(options) {
             ...file,
             contents: new Buffer(contents),
             id: key,
-            title,
+            ...title,
             description: 'test',
-            layout: 'reference.md'
+            layout: 'reference.md',
+            origin_path: origin_path_prefix + key
           }
         };
       } else if (images && minimatch(key, 'images/**/*.*')) {
@@ -218,7 +232,8 @@ function plugin(options) {
           ...file,
           title: 'Check user browser vulnerabilities',
           description: 'Outdated Java browser plugins',
-          contents: files['exercises/check_user_browser_vulns/browser_java_plugin.md'].contents
+          contents: files['exercises/check_user_browser_vulns/browser_java_plugin.md'].contents,
+          origin
         };
       } else if (activities) {
         const description = file.summary
@@ -231,9 +246,13 @@ function plugin(options) {
               .join(' ') + '...'
           : file.title || '';
         debug('description', description);
-        return { ...file, description };
+        return {
+          ...file,
+          description,
+          origin
+        };
       }
-      return file;
+      return { ...file, origin };
     };
 
     const reduced = _.reduce(files, walk, {});
@@ -245,8 +264,9 @@ function plugin(options) {
     });
 
     // Restore files object with migration results
+    // And add origin metatag for upstream edit link
     Object.keys(results).forEach(key => {
-      files[key] = results[key];
+      files[key] = { ...results[key] };
     });
 
     done();

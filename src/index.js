@@ -44,7 +44,7 @@ function plugin(options) {
         // Get index content
         const index = minimatch(key, 'exercises/*/index.md') ? file.contents.toString() : null;
 
-        // Sanity checks
+        // Sanity check: Verify that activity index structure is as expected
         const fields = [
           'summary',
           'approach',
@@ -62,33 +62,55 @@ function plugin(options) {
         while ((match = includes_regexp.exec(index))) matches.push(match[1]);
 
         matches.forEach(match => {
-          if (!fields.includes(match)) console.warn('Unknown field ' + match + ' in file ' + key);
+          if (!fields.includes(match))
+            console.warn('Unexpected transclusion ' + match + ' in activity index file ' + key);
         });
 
         // Match title
 
         const title = index && index.match(/^####\s(.*)$/m) ? { title: index.match(/^####\s(.*)$/m)[1] } : null;
 
+        const processTransclusions = str => trimNewlines(str.toString().replace(includes_regexp, ':[]($1.md)'));
+
+        // Sanity check: Check if transclusion destinations exist.
+
+        const transclusionRE = /\:\[\]\((.*)\)/gm;
+        let destLinks;
+
+        while ((destLinks = transclusionRE.exec(processTransclusions(file.contents))) !== null) {
+          try {
+            fs.openSync(
+              path.join(metalsmith.source(), 'exercises', key.split('exercises/')[1].split('/')[0], destLinks[1]),
+              fs.constants.O_RDONLY
+            );
+          } catch (e) {
+            console.log(
+              `Missing transclusion destination in ${key}:`,
+              path.join(metalsmith.source(), 'exercises', key.split('exercises/')[1].split('/')[0], destLinks[1])
+            );
+          }
+        }
+
         // Add included files as metadata on activity object.
 
         const summary = minimatch(key, 'exercises/*/summary.md')
-          ? { summary: trimNewlines(file.contents.toString()) }
+          ? { summary: processTransclusions(file.contents) }
           : null;
 
         const approach = minimatch(key, 'exercises/*/approach.md')
-          ? { approach: trimNewlines(file.contents.toString()) }
+          ? { approach: processTransclusions(file.contents) }
           : null;
         const materials = minimatch(key, 'exercises/*/materials_needed.md')
-          ? { materials: trimNewlines(file.contents.toString()) }
+          ? { materials: processTransclusions(file.contents) }
           : null;
         const opsec = minimatch(key, 'exercises/*/operational_security.md')
-          ? { opsec: trimNewlines(file.contents.toString()) }
+          ? { opsec: processTransclusions(file.contents) }
           : null;
         const instructions = minimatch(key, 'exercises/*/instructions.md')
-          ? { instructions: trimNewlines(file.contents.toString()) }
+          ? { instructions: processTransclusions(file.contents) }
           : null;
         const recommendations = minimatch(key, 'exercises/*/recommendations.md')
-          ? { recommendations: trimNewlines(file.contents.toString()) }
+          ? { recommendations: processTransclusions(file.contents) }
           : null;
 
         const id = {

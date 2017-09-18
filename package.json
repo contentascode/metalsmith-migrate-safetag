@@ -2,7 +2,7 @@
   "name": "metalsmith-migrate-safetag",
   "description": "A metalsmith plugin to migrate SAFETAG content to the metalsmith approach",
   "repository": "git://github.com/contentascode/metalsmith-migrate-safetag.git",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "license": "MIT",
   "main": "lib/index.js",
   "scripts": {

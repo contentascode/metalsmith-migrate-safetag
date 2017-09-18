@@ -232,7 +232,7 @@ function plugin(options) {
           ...file,
           title: 'Check user browser vulnerabilities',
           description: 'Outdated Java browser plugins',
-          contents: files['exercises/check_user_browser_vulns/browser_java_plugin.md'].contents,
+          special: files['exercises/check_user_browser_vulns/browser_java_plugin.md'].contents.toString(),
           origin
         };
       } else if (activities) {

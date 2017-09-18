@@ -85,7 +85,7 @@ function plugin(options) {
         const id = {
           id: key.split('exercises/')[1].split('/')[0].replace(/_/g, '-')
         };
-        const activity = 'activities/' + id.id + '/index.md';
+        const activity = 'activities/' + id.id + '.md';
 
         // Assemble single activity file with metadata fields for second pass.
         return {

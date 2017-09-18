@@ -246,10 +246,16 @@ function plugin(options) {
               .join(' ') + '...'
           : file.title || '';
         debug('description', description);
+
+        // Add footnotes file to all activities (only the used ones will be displayed by pandoc)
+
+        const footnotes = files['references/footnotes.md'].contents.toString();
+
         return {
           ...file,
           description,
-          origin
+          origin,
+          footnotes
         };
       }
       return { ...file, origin };

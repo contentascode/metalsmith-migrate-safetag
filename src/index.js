@@ -2,6 +2,8 @@ const debug = require('debug')('metalsmith:migrate-safetag');
 const minimatch = require('minimatch');
 const _ = require('lodash');
 const trimNewlines = require('trim-newlines');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * Expose `plugin`.
@@ -80,7 +82,9 @@ function plugin(options) {
           ? { recommendations: trimNewlines(file.contents.toString()) }
           : null;
 
-        const id = { id: key.split('exercises/')[1].split('/')[0].replace(/_/g, '-') };
+        const id = {
+          id: key.split('exercises/')[1].split('/')[0].replace(/_/g, '-')
+        };
         const activity = 'activities/' + id.id + '/index.md';
 
         // Assemble single activity file with metadata fields for second pass.
@@ -109,7 +113,24 @@ function plugin(options) {
         // Activities are listed in index.guide.md
         // For now, instead of scraping it, reuse taxonomy in toolkit pipeline to display activity browser.
 
-        // TODO:Sanity checks
+        // Sanity check: Check if transclusion destinations exist.
+
+        const transclusionRE = /\:\[\]\((.*)\)/gm;
+        let destLinks;
+
+        while ((destLinks = transclusionRE.exec(contents)) !== null) {
+          // We skip activities as they are linked to methods via the taxonomy
+          if (!destLinks[1].includes('/activities/')) {
+            try {
+              fs.openSync(path.join(metalsmith.source(), 'methods', destLinks[1]), fs.constants.O_RDONLY);
+            } catch (e) {
+              console.log(
+                `Missing transclusion destination in ${key}:`,
+                path.join(metalsmith.source(), 'methods', destLinks[1])
+              );
+            }
+          }
+        }
 
         // Match title
 

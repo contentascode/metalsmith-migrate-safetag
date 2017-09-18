@@ -213,7 +213,7 @@ function plugin(options) {
     // Second pass transform.
     const transform = (file, key) => {
       // Deal with special cases
-      if (activities && key === 'activities/check-user-browser-vulns/index.md') {
+      if (activities && key === 'activities/check-user-browser-vulns.md') {
         return {
           ...file,
           title: 'Check user browser vulnerabilities',

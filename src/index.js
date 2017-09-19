@@ -249,15 +249,20 @@ function plugin(options) {
     // Second pass transform.
     const transform = (file, key) => {
       // Deal with special cases
+
+      // Add footnotes file to all remaining files (only the used ones will be displayed by pandoc)
+      const footnotes = ':[](../references/footnotes.md)';
+
       if (activities && key === 'activities/check-user-browser-vulns.md') {
         return {
           ...file,
           title: 'Check user browser vulnerabilities',
           description: 'Outdated Java browser plugins',
           special: files['exercises/check_user_browser_vulns/browser_java_plugin.md'].contents.toString(),
-          origin
+          origin,
+          footnotes
         };
-      } else if (activities) {
+      } else if (activities && minimatch(key, 'activities/**/*.md')) {
         const description = file.summary
           ? trimNewlines(file.summary)
               .substring(0, 120)
@@ -269,18 +274,25 @@ function plugin(options) {
           : file.title || '';
         debug('description', description);
 
-        // Add footnotes file to all activities (only the used ones will be displayed by pandoc)
-
-        const footnotes = files['references/footnotes.md'].contents.toString();
-
         return {
           ...file,
           description,
           origin,
           footnotes
         };
+      } else if (methods && minimatch(key, 'methods/*.md')) {
+        console.log('method.match', key);
+        // Add footnotes only on transcluding file.
+        return {
+          ...file,
+          origin,
+          footnotes
+        };
       }
-      return { ...file, origin };
+      return {
+        ...file,
+        origin
+      };
     };
 
     const reduced = _.reduce(files, walk, {});

@@ -28,12 +28,15 @@ function plugin(options) {
     references = false,
     images = false,
     document_matter = false,
+    guides = false,
     origin,
     origin_path_prefix
   } =
     options || {};
 
   return function(files, metalsmith, done) {
+    //
+
     // First pass reducer to group exercises files in one activity and prepare for transform pass.
     const walk = (acc, file, key) => {
       // Process activities.
@@ -74,7 +77,7 @@ function plugin(options) {
 
         // Sanity check: Check if transclusion destinations exist.
 
-        const transclusionRE = /\:\[\]\((.*)\)/gm;
+        const transclusionRE = /:\[\]\((.*)\)/gm;
         let destLinks;
 
         while ((destLinks = transclusionRE.exec(processTransclusions(file.contents))) !== null) {
@@ -114,7 +117,10 @@ function plugin(options) {
           : null;
 
         const id = {
-          id: key.split('exercises/')[1].split('/')[0].replace(/_/g, '-')
+          id: key
+            .split('exercises/')[1]
+            .split('/')[0]
+            .replace(/_/g, '-')
         };
         const activity = 'activities/' + id.id + '.md';
 
@@ -140,15 +146,14 @@ function plugin(options) {
         const contents = file.contents
           .toString()
           .replace(/^!INCLUDE "(.*)"\W?$/gm, ':[]($1)')
-          .replace(/\/exercises\//g, '/activities/')
-          .replace(/^### Activities.?$/gm, '');
+          .replace(/\/exercises\//g, '/activities/');
 
         // Activities are listed in index.guide.md
         // For now, instead of scraping it, reuse taxonomy in toolkit pipeline to display activity browser.
 
         // Sanity check: Check if transclusion destinations exist.
 
-        const transclusionRE = /\:\[\]\((.*)\)/gm;
+        const transclusionRE = /:\[\]\((.*)\)/gm;
         let destLinks;
 
         while ((destLinks = transclusionRE.exec(contents)) !== null) {
@@ -171,8 +176,17 @@ function plugin(options) {
           contents && contents.match(/^####\s(.*)$/m) ? { title: contents.match(/^####\s(.*)$/m)[1] } : null;
 
         // Assemble single activity file with metadata fields for second pass.
+        // Create ${method}.md file as target for toolkit display and leave ${method}.guide.md for guide preview.
         return {
           ...acc,
+          [key.replace('.guide.md', '.md')]: {
+            ...file,
+            contents: new Buffer(contents.replace(/^### Activities.?$/gm, '')),
+            id: key.replace('.guide.md', '.md'),
+            ...title,
+            layout: 'method.md',
+            origin_path: origin_path_prefix + key
+          },
           [key]: {
             ...file,
             contents: new Buffer(contents),
@@ -231,7 +245,28 @@ function plugin(options) {
         };
       } else if (images && minimatch(key, 'images/**/*.*')) {
         // Move images to methods folder for now.
-        const move = 'methods/' + key;
+        // const move = 'methods/' + key;
+
+        // TODO:Sanity checks
+
+        // Assemble single activity file with metadata fields for second pass.
+        return {
+          ...acc,
+          [key]: {
+            ...file
+          }
+        };
+      } else if (guides && minimatch(key, 'index.guide.md')) {
+        // Move guide to guides/index.md.
+        const move = 'index.guide.md';
+
+        const contents = file.contents
+          .toString()
+          .replace(/^!INCLUDE "(.*)"\W?$/gm, ':[](./$1)')
+          .replace(
+            /:\[\]\(\.\/exercises\/(.*)\/index\.md\)/g,
+            (_, slug) => ':[](./activities/' + slug.replace(/_/g, '-') + '.md)'
+          );
 
         // TODO:Sanity checks
 
@@ -239,7 +274,10 @@ function plugin(options) {
         return {
           ...acc,
           [move]: {
-            ...file
+            ...file,
+            contents: new Buffer(contents),
+            layout: 'guide.md',
+            origin_path: origin_path_prefix + key
           }
         };
       }
@@ -251,7 +289,7 @@ function plugin(options) {
       // Deal with special cases
 
       // Add footnotes file to all remaining files (only the used ones will be displayed by pandoc)
-      const footnotes = ':[](../references/footnotes.md)';
+      const footnotes = null; //':[](../references/footnotes.md)';
 
       if (activities && key === 'activities/check-user-browser-vulns.md') {
         return {
@@ -281,7 +319,7 @@ function plugin(options) {
           footnotes
         };
       } else if (methods && minimatch(key, 'methods/*.md')) {
-        console.log('method.match', key);
+        // console.log('method.match', key);
         // Add footnotes only on transcluding file.
         return {
           ...file,

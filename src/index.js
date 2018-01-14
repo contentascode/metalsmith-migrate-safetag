@@ -36,6 +36,7 @@ function plugin(options) {
 
   return function(files, metalsmith, done) {
     //
+    const footnotes = ':[](../references/footnotes.md)';
 
     // First pass reducer to group exercises files in one activity and prepare for transform pass.
     const walk = (acc, file, key) => {
@@ -219,7 +220,7 @@ function plugin(options) {
             origin_path: origin_path_prefix + key
           }
         };
-      } else if (references && minimatch(key, 'references/*.md')) {
+      } else if (references && minimatch(key, 'references/*.md') && !minimatch(key, 'references/footnotes.md')) {
         // TODO: Check external links and download for offline use.
         const contents = file.contents.toString();
 
@@ -238,7 +239,28 @@ function plugin(options) {
             contents: new Buffer(contents),
             id: key,
             ...title,
-            description: 'test',
+            description: '',
+            layout: 'reference.md',
+            origin_path: origin_path_prefix + key
+          }
+        };
+      } else if (references && minimatch(key, 'references/footnotes.md')) {
+        // Footnotes need to be transformed to prevent confusion with transclusion syntax
+
+        const contents = file.contents.toString().replace(/(\[.*\]:)/g, '$1 ');
+
+        // TODO:Sanity checks
+
+        const title = 'footnotes';
+
+        return {
+          ...acc,
+          [key]: {
+            ...file,
+            contents: new Buffer(contents),
+            id: key,
+            ...title,
+            description: '',
             layout: 'reference.md',
             origin_path: origin_path_prefix + key
           }
@@ -257,20 +279,25 @@ function plugin(options) {
           }
         };
       } else if (guides && minimatch(key, 'index.guide.md')) {
-        // Move guide to guides/index.md.
+        // Move guide to index.guide.md.
         const move = 'index.guide.md';
 
         const contents = file.contents
           .toString()
+          .replace('\n!INCLUDE "methods/intro.md"', '')
           .replace(/^!INCLUDE "(.*)"\W?$/gm, ':[](./$1)')
           .replace(
             /:\[\]\(\.\/exercises\/(.*)\/index\.md\)/g,
             (_, slug) => ':[](./activities/' + slug.replace(/_/g, '-') + '.md)'
-          );
+          )
+          // Add footnotes
+          .concat('\n:[](references/footnotes.md)');
+
+        // Parse methods activities which are included in the index.guide
+        // and reference them in order to add them to the method file.
 
         // TODO:Sanity checks
 
-        // Assemble single activity file with metadata fields for second pass.
         return {
           ...acc,
           [move]: {
@@ -286,14 +313,14 @@ function plugin(options) {
 
     // Second pass transform.
     const transform = (file, key) => {
-      // Deal with special cases
+      // TODO: Refactor to separate transform on all from special cases
 
-      // Add footnotes file to all remaining files (only the used ones will be displayed by pandoc)
-      const footnotes = null; //':[](../references/footnotes.md)';
+      // Add footnotes file to activities and methods (only the used ones will be displayed by pandoc)
 
       if (activities && key === 'activities/check-user-browser-vulns.md') {
         return {
           ...file,
+          contents: new Buffer(file.contents.toString().replace(/\\newpage/gm, '\n---')),
           title: 'Check user browser vulnerabilities',
           description: 'Outdated Java browser plugins',
           special: files['exercises/check_user_browser_vulns/browser_java_plugin.md'].contents.toString(),
@@ -314,21 +341,22 @@ function plugin(options) {
 
         return {
           ...file,
+          contents: new Buffer(file.contents.toString().replace(/\\newpage/gm, '\n---')),
           description,
           origin,
           footnotes
         };
       } else if (methods && minimatch(key, 'methods/*.md')) {
-        // console.log('method.match', key);
-        // Add footnotes only on transcluding file.
         return {
           ...file,
+          contents: new Buffer(file.contents.toString().replace(/\\newpage/gm, '\n---') + '\n' + files.activities),
           origin,
           footnotes
         };
       }
       return {
         ...file,
+        contents: new Buffer(file.contents.toString().replace(/\\newpage/gm, '\n---')),
         origin
       };
     };

@@ -27,7 +27,7 @@
     "nodemon": "^1.11.0"
   },
   "dependencies": {
-    "debug": "^2.2.0",
+    "debug": "^2.6.9",
     "lodash": "^4.17.4",
     "minimatch": "^3.0.0",
     "trim-newlines": "^2.0.0",

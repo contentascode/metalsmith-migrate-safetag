@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "debug": "^2.2.0",
-    "lodash": "^4.17.4",
+    "lodash": "^4.17.20",
     "minimatch": "^3.0.0",
     "trim-newlines": "^2.0.0",
     "source-map-support": "^0.4.15"
